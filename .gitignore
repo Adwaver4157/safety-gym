@@ -112,3 +112,6 @@ data
 *.*~
 
 .DS_Store
+
+# pycharm
+.idea/
