@@ -888,7 +888,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         self.first_reset = False  # Built our first world successfully
 
         # Return an observation
-        return self.obs()
+        return self._get_obs()
 
     def dist_goal(self):
         ''' Return the distance from the robot to the goal XY position '''
@@ -1037,7 +1037,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 obs[bin_minus] = max(obs[bin_minus], (1 - alias) * sensor)
         return obs
 
-    def obs(self):
+    def _get_obs(self):
         ''' Return the observation of our agent '''
         self.sim.forward()  # Needed to get sensordata correct
         obs = {}
@@ -1119,9 +1119,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 flat_obs[offset:offset + k_size] = obs[k].flat
                 offset += k_size
             obs = flat_obs
-        assert self.observation_space.contains(obs), f'Bad obs {obs} {self.observation_space}'
+        # assert self.observation_space.contains(obs), f'Bad obs {obs} {self.observation_space}'
         return obs
-
 
     def cost(self):
         ''' Calculate the current costs and return a dict '''
@@ -1266,7 +1265,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
             self.sim.forward()  # Needed to get sensor readings correct!
 
             # Reward processing
-            reward = self.reward()
+            reward = self._compute_reward()
 
             # Constraint violations
             info.update(self.cost())
@@ -1274,6 +1273,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
             # Button timer (used to delay button resampling)
             self.buttons_timer_tick()
 
+            info['goal_met'] = False
             # Goal processing
             if self.goal_met():
                 info['goal_met'] = True
@@ -1301,9 +1301,9 @@ class Engine(gym.Env, gym.utils.EzPickle):
         if self.steps >= self.num_steps:
             self.done = True  # Maximum number of steps in an episode reached
 
-        return self.obs(), reward, self.done, info
+        return self._get_obs(), reward, self.done, info
 
-    def reward(self):
+    def _compute_reward(self):
         ''' Calculate the dense component of reward.  Call exactly once per step '''
         reward = 0.0
         # Distance from robot to goal

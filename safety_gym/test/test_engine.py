@@ -47,7 +47,7 @@ class TestEngine(unittest.TestCase):
         print('theta', theta)
         print('dtheta', dtheta)
         print('sensordata', p.data.sensordata)
-        obs = p.obs()
+        obs = p._get_obs()
         print('obs', obs)
         x, y = obs['jointpos_hip_1_z']
         dz = obs['jointvel_hip_1_z']
