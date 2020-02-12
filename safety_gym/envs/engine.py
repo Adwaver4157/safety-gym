@@ -314,6 +314,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         self.clear()
 
         self.seed(self._seed)
+        self.rs = np.random.RandomState(self._seed)
         self.done = True
 
     def parse(self, config):
