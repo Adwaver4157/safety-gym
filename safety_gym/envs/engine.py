@@ -869,6 +869,10 @@ class Engine(gym.Env, gym.utils.EzPickle):
         self.last_subtreecom = self.world.get_sensor('subtreecom')
 
     def reset(self):
+        self.reset_sim()
+        return self._get_obs()
+
+    def reset_sim(self):
         ''' Reset the physics simulation and return observation '''
         self._seed += 1  # Increment seed
         self.rs = np.random.RandomState(self._seed)
@@ -887,9 +891,6 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
         # Reset stateful parts of the environment
         self.first_reset = False  # Built our first world successfully
-
-        # Return an observation
-        return self._get_obs()
 
     def dist_goal(self):
         ''' Return the distance from the robot to the goal XY position '''

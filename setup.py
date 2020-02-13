@@ -9,6 +9,7 @@ assert sys.version_info.major == 3 and sys.version_info.minor >= 6, \
 
 setup(
     name='safety_gym',
+    version="0.1",
     packages=['safety_gym'],
     install_requires=[
         'gym~=0.15.3',
