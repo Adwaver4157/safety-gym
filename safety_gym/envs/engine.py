@@ -13,7 +13,6 @@ from safety_gym.envs.world import World, Robot
 
 import sys
 
-
 # Distinct colors for different types of objects.
 # For now this is mostly used for visualization.
 # This also affects the vision observation, so if training from pixels.
@@ -49,6 +48,7 @@ ORIGIN_COORDINATES = np.zeros(3)
 DEFAULT_WIDTH = 256
 DEFAULT_HEIGHT = 256
 
+
 class ResamplingError(AssertionError):
     ''' Raised when we fail to sample a valid distribution of objects or goals '''
     pass
@@ -64,7 +64,7 @@ def quat2mat(quat):
     q = np.array(quat, dtype='float64')
     m = np.zeros(9, dtype='float64')
     mujoco_py.functions.mju_quat2Mat(m, q)
-    return m.reshape((3,3))
+    return m.reshape((3, 3))
 
 
 def quat2zalign(quat):
@@ -77,11 +77,10 @@ def quat2zalign(quat):
     # so inner product with z_{ground} = [0,0,1] is
     # z_{body} dot z_{ground} = a**2 - b**2 - c**2 + d**2
     a, b, c, d = quat
-    return a**2 - b**2 - c**2 + d**2
+    return a ** 2 - b ** 2 - c ** 2 + d ** 2
 
 
 class Engine(gym.Env, gym.utils.EzPickle):
-
     '''
     Engine: an environment-building tool for safe exploration research.
 
@@ -117,7 +116,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'build_resample': True,  # If true, rejection sample from valid environments
         'continue_goal': True,  # If true, draw a new goal after achievement
         'terminate_resample_failure': True,  # If true, end episode when resampling fails,
-                                             # otherwise, raise a python exception.
+        # otherwise, raise a python exception.
         # TODO: randomize starting joint positions
 
         # Observation flags - some of these require other flags to be on
@@ -148,20 +147,21 @@ class Engine(gym.Env, gym.utils.EzPickle):
         # Render options
         'render_labels': False,
         'render_lidar_markers': True,
-        'render_lidar_radius': 0.15, 
-        'render_lidar_size': 0.025, 
-        'render_lidar_offset_init': 0.5, 
-        'render_lidar_offset_delta': 0.06, 
+        'render_lidar_radius': 0.15,
+        'render_lidar_size': 0.025,
+        'render_lidar_offset_init': 0.5,
+        'render_lidar_offset_delta': 0.06,
 
         # Vision observation parameters
-        'vision_size': (60, 40),  # Size (width, height) of vision observation; gets flipped internally to (rows, cols) format
+        'vision_size': (60, 40),
+        # Size (width, height) of vision observation; gets flipped internally to (rows, cols) format
         'vision_render': True,  # Render vision observation in the viewer
         'vision_render_size': (300, 200),  # Size to render the vision in the viewer
 
         # Lidar observation parameters
         'lidar_num_bins': 10,  # Bins (around a full circle) for lidar sensing
         'lidar_max_dist': None,  # Maximum distance for lidar sensitivity (if None, exponential distance)
-        'lidar_exp_gain': 1.0, # Scaling factor for distance in exponential distance lidar
+        'lidar_exp_gain': 1.0,  # Scaling factor for distance in exponential distance lidar
         'lidar_type': 'pseudo',  # 'pseudo', 'natural', see self.obs_lidar()
         'lidar_alias': True,  # Lidar bins alias into each other
 
@@ -183,7 +183,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'box_keepout': 0.2,  # Box keepout radius for placement
         'box_size': 0.2,  # Box half-radius size
         'box_density': 0.001,  # Box density
-        'box_null_dist': 2, # Within box_null_dist * box_size radius of box, no box reward given
+        'box_null_dist': 2,  # Within box_null_dist * box_size radius of box, no box reward given
 
         # Reward is distance towards goal plus a constant for being within range of goal
         # reward_distance should be positive to encourage moving towards the goal
@@ -253,7 +253,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'vases_size': 0.1,  # Half-size (radius) of vase object
         'vases_density': 0.001,  # Density of vases
         'vases_sink': 4e-5,  # Experimentally measured, based on size and density,
-                             # how far vases "sink" into the floor.
+        # how far vases "sink" into the floor.
         # Mujoco has soft contacts, so vases slightly sink into the floor,
         # in a way which can be hard to precisely calculate (and varies with time)
         # Ignore some costs below a small threshold, to reduce noise.
@@ -488,7 +488,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
             self.observation_space = gym.spaces.Dict(obs_space_dict)
 
     def toggle_observation_space(self):
-        self.observation_flatten = not(self.observation_flatten)
+        self.observation_flatten = not (self.observation_flatten)
         self.build_observation_space()
 
     def placements_from_location(self, location, keepout):
@@ -534,22 +534,22 @@ class Engine(gym.Env, gym.utils.EzPickle):
             placements.update(self.placements_dict_from_object('goal'))
         if self.task == 'push':
             placements.update(self.placements_dict_from_object('box'))
-        if self.task == 'button' or self.buttons_num: #self.constrain_buttons:
+        if self.task == 'button' or self.buttons_num:  # self.constrain_buttons:
             placements.update(self.placements_dict_from_object('button'))
-        if self.hazards_num: #self.constrain_hazards:
+        if self.hazards_num:  # self.constrain_hazards:
             placements.update(self.placements_dict_from_object('hazard'))
-        if self.vases_num: #self.constrain_vases:
+        if self.vases_num:  # self.constrain_vases:
             placements.update(self.placements_dict_from_object('vase'))
-        if self.pillars_num: #self.constrain_pillars:
+        if self.pillars_num:  # self.constrain_pillars:
             placements.update(self.placements_dict_from_object('pillar'))
-        if self.gremlins_num: #self.constrain_gremlins:
+        if self.gremlins_num:  # self.constrain_gremlins:
             placements.update(self.placements_dict_from_object('gremlin'))
 
         self.placements = placements
 
     def seed(self, seed=None):
         ''' Set internal random state seeds '''
-        self._seed = np.random.randint(2**32) if seed is None else seed
+        self._seed = np.random.randint(2 ** 32) if seed is None else seed
 
     def build_layout(self):
         ''' Rejection sample a placement of objects to find a layout. '''
@@ -627,7 +627,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
             if len(constrained) == 1:
                 choice = constrained[0]
             else:
-                areas = [(x2 - x1)*(y2 - y1) for x1, y1, x2, y2 in constrained]
+                areas = [(x2 - x1) * (y2 - y1) for x1, y1, x2, y2 in constrained]
                 probs = np.array(areas) / np.sum(areas)
                 choice = constrained[self.rs.choice(len(constrained), p=probs)]
         xmin, ymin, xmax, ymax = choice
@@ -653,7 +653,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
             floor_size = max(self.placements_extents)
             world_config['floor_size'] = [floor_size + .1, floor_size + .1, 1]
 
-        #if not self.observe_vision:
+        # if not self.observe_vision:
         #    world_config['render_context'] = -1  # Hijack this so we don't create context
         world_config['observe_vision'] = self.observe_vision
 
@@ -713,14 +713,14 @@ class Engine(gym.Env, gym.utils.EzPickle):
             for i in range(self.hazards_num):
                 name = f'hazard{i}'
                 geom = {'name': name,
-                        'size': [self.hazards_size, 1e-2],#self.hazards_size / 2],
-                        'pos': np.r_[self.layout[name], 2e-2],#self.hazards_size / 2 + 1e-2],
+                        'size': [self.hazards_size, 1e-2],  # self.hazards_size / 2],
+                        'pos': np.r_[self.layout[name], 2e-2],  # self.hazards_size / 2 + 1e-2],
                         'rot': self.random_rot(),
                         'type': 'cylinder',
                         'contype': 0,
                         'conaffinity': 0,
                         'group': GROUP_HAZARD,
-                        'rgba': COLOR_HAZARD * [1, 1, 1, 0.25]} #0.1]}  # transparent
+                        'rgba': COLOR_HAZARD * [1, 1, 1, 0.25]}  # 0.1]}  # transparent
                 world_config['geoms'][name] = geom
         if self.pillars_num:
             for i in range(self.pillars_num):
@@ -767,7 +767,6 @@ class Engine(gym.Env, gym.utils.EzPickle):
                     'rgba': COLOR_CIRCLE * [1, 1, 1, 0.1]}
             world_config['geoms']['circle'] = geom
 
-
         # Extra mocap bodies used for control (equality to object of same name)
         world_config['mocaps'] = {}
         if self.gremlins_num:
@@ -780,7 +779,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
                          'rot': self._gremlins_rots[i],
                          'group': GROUP_GREMLIN,
                          'rgba': np.array([1, 1, 1, .1]) * COLOR_GREMLIN}
-                         #'rgba': np.array([1, 1, 1, 0]) * COLOR_GREMLIN}
+                # 'rgba': np.array([1, 1, 1, 0]) * COLOR_GREMLIN}
                 world_config['mocaps'][name] = mocap
 
         return world_config
@@ -834,8 +833,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             raise ResamplingError('Failed to generate goal')
         # Move goal geom to new layout position
         self.world_config_dict['geoms']['goal']['pos'][:2] = self.layout['goal']
-        #self.world.rebuild(deepcopy(self.world_config_dict))
-        #self.update_viewer_sim = True
+        # self.world.rebuild(deepcopy(self.world_config_dict))
+        # self.update_viewer_sim = True
         goal_body_id = self.sim.model.body_name2id('goal')
         self.sim.model.body_pos[goal_body_id][:2] = self.layout['goal']
         self.sim.forward()
@@ -1014,6 +1013,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             - constant size observation with variable numbers of objects
         '''
         obs = np.zeros(self.lidar_num_bins)
+        bin_size = (np.pi * 2) / self.lidar_num_bins
+
         for pos in positions:
             pos = np.asarray(pos)
             if pos.shape == (3,):
@@ -1021,7 +1022,6 @@ class Engine(gym.Env, gym.utils.EzPickle):
             z = np.complex(*self.ego_xy(pos))  # X, Y as real, imaginary components
             dist = np.abs(z)
             angle = np.angle(z) % (np.pi * 2)
-            bin_size = (np.pi * 2) / self.lidar_num_bins
             bin = int(angle / bin_size)
             bin_angle = bin_size * bin
             if self.lidar_max_dist is None:
@@ -1214,7 +1214,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
     def set_mocaps(self):
         ''' Set mocap object positions before a physics step is executed '''
-        if self.gremlins_num: # self.constrain_gremlins:
+        if self.gremlins_num:  # self.constrain_gremlins:
             phase = float(self.data.time)
             for i in range(self.gremlins_num):
                 name = f'gremlin{i}'
@@ -1245,7 +1245,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
         # Set action
         action_range = self.model.actuator_ctrlrange
         # action_scale = action_range[:,1] - action_range[:, 0]
-        self.data.ctrl[:] = np.clip(action, action_range[:,0], action_range[:,1]) #np.clip(action * 2 / action_scale, -1, 1)
+        self.data.ctrl[:] = np.clip(action, action_range[:, 0],
+                                    action_range[:, 1])  # np.clip(action * 2 / action_scale, -1, 1)
         if self.action_noise:
             self.data.ctrl[:] += self.action_noise * self.rs.randn(self.model.nu)
 
@@ -1267,10 +1268,11 @@ class Engine(gym.Env, gym.utils.EzPickle):
             self.sim.forward()  # Needed to get sensor readings correct!
 
             # Reward processing
-            reward = self._compute_reward()
+            # reward = self._compute_reward()
+            reward = 0.  # Ignore reward computation as it is done in inherited class
 
             # Constraint violations
-            info.update(self.cost())
+            # info.update(self.cost())
 
             # Button timer (used to delay button resampling)
             self.buttons_timer_tick()
@@ -1279,7 +1281,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
             # Goal processing
             if self.goal_met():
                 info['goal_met'] = True
-                reward += self.reward_goal
+                # reward += self.reward_goal
                 if self.continue_goal:
                     # Update the internal layout so we can correctly resample (given objects have moved)
                     self.update_layout()
@@ -1298,10 +1300,10 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 else:
                     self.done = True
 
-        # Timeout
-        self.steps += 1
-        if self.steps >= self.num_steps:
-            self.done = True  # Maximum number of steps in an episode reached
+        # # Timeout
+        # self.steps += 1
+        # if self.steps >= self.num_steps:
+        #     self.done = True  # Maximum number of steps in an episode reached
 
         return self._get_obs(), reward, self.done, info
 
@@ -1340,8 +1342,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             robot_vel = self.world.robot_vel()
             x, y, _ = robot_com
             u, v, _ = robot_vel
-            radius = np.sqrt(x**2 + y**2)
-            reward += (((-u*y + v*x)/radius)/(1 + np.abs(radius - self.circle_radius))) * self.reward_circle
+            radius = np.sqrt(x ** 2 + y ** 2)
+            reward += (((-u * y + v * x) / radius) / (1 + np.abs(radius - self.circle_radius))) * self.reward_circle
         # Intrinsic reward for uprightness
         if self.reward_orientation:
             zalign = quat2zalign(self.data.get_body_xquat(self.reward_orientation_body))
@@ -1349,7 +1351,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         # Clip reward
         if self.reward_clip:
             in_range = reward < self.reward_clip and reward > -self.reward_clip
-            if not(in_range):
+            if not (in_range):
                 reward = np.clip(reward, -self.reward_clip, self.reward_clip)
                 print('Warning: reward was outside of range!')
         return reward
@@ -1415,23 +1417,25 @@ class Engine(gym.Env, gym.utils.EzPickle):
             self.viewer.draw_pixels(self.save_obs_vision, 0, 0)
 
     def render(self,
-               mode='human', 
+               mode='human',
                camera_id=None,
                width=DEFAULT_WIDTH,
                height=DEFAULT_HEIGHT
                ):
         ''' Render the environment to the screen '''
 
-        if self.viewer is None or mode!=self._old_render_mode:
+        if self.viewer is None or mode != self._old_render_mode:
             # Set camera if specified
             if mode == 'human':
                 self.viewer = MjViewer(self.sim)
                 self.viewer.cam.fixedcamid = -1
                 self.viewer.cam.type = const.CAMERA_FREE
+                self.viewer.cam.elevation = -90  # camera rotation around the axis in the plane going through the frame origin (if 0 you just see a line)
+                self.viewer.cam.azimuth = 0
             else:
                 self.viewer = MjRenderContextOffscreen(self.sim)
                 self.viewer._hide_overlay = True
-                self.viewer.cam.fixedcamid = camera_id #self.model.camera_name2id(mode)
+                self.viewer.cam.fixedcamid = camera_id  # self.model.camera_name2id(mode)
                 self.viewer.cam.type = const.CAMERA_FIXED
             self.viewer.render_swap_callback = self.render_swap_callback
             # Turn all the geom groups on
@@ -1496,9 +1500,9 @@ class Engine(gym.Env, gym.utils.EzPickle):
             vision = np.array(vision, dtype='uint8')
             self.save_obs_vision = vision
 
-        if mode=='human':
+        if mode == 'human':
             self.viewer.render()
-        elif mode=='rgb_array':
+        elif mode == 'rgb_array':
             self.viewer.render(width, height)
             data = self.viewer.read_pixels(width, height, depth=False)
             self.viewer._markers[:] = []
