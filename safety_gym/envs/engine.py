@@ -1309,7 +1309,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
     def _compute_reward(self):
         ''' Calculate the dense component of reward.  Call exactly once per step '''
-        reward = 0.0
+        return 0.
         # Distance from robot to goal
         if self.task in ['goal', 'button']:
             dist_goal = self.dist_goal()
