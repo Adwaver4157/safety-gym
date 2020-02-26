@@ -40,6 +40,7 @@ GROUP_HAZARD = 3
 GROUP_VASE = 4
 GROUP_GREMLIN = 5
 GROUP_CIRCLE = 6
+GROUP_ROOM = 4
 
 # Constant for origin of world
 ORIGIN_COORDINATES = np.zeros(3)
@@ -110,6 +111,13 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'robot_keepout': 0.4,  # Needs to be set to match the robot XML used
         'robot_base': 'xmls/car.xml',  # Which robot XML to use as the base
         'robot_rot': None,  # Override robot starting angle
+        'point_straight': False,
+
+        # Task
+        'place_room': False,
+        'place_four_room': False,
+        'room_wall_keepout': 0,
+        'room_type': 0,
 
         # Starting position distribution
         'randomize_layout': True,  # If false, set the random seed before layout to constant
@@ -269,7 +277,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'pillars_locations': [],  # Fixed locations to override placements
         'pillars_keepout': 0.3,  # Radius for placement of pillars
         'pillars_size': 0.2,  # Half-size (radius) of pillar objects
-        'pillars_height': 0.5,  # Half-height of pillars geoms
+        'pillars_height': 0.2,  # Half-height of pillars geoms
         'pillars_cost': 1.0,  # Cost (per step) for being in contact with a pillar
 
         # Gremlins (moving objects we should avoid)
@@ -388,6 +396,10 @@ class Engine(gym.Env, gym.utils.EzPickle):
     def hazards_pos(self):
         ''' Helper to get the hazards positions from layout '''
         return [self.data.get_body_xpos(f'hazard{i}').copy() for i in range(self.hazards_num)]
+
+    @property
+    def room_walls_pos(self):
+        return [self.data.get_body_xpos(f'room_wall{i}').copy() for i in range(self.room_wall_nums)]
 
     @property
     def walls_pos(self):
@@ -529,6 +541,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
         placements.update(self.placements_dict_from_object('robot'))
         placements.update(self.placements_dict_from_object('wall'))
+        if self.place_room:
+            placements.update(self.placements_dict_from_object('room_wall'))
 
         if self.task in ['goal', 'push']:
             placements.update(self.placements_dict_from_object('goal'))
@@ -575,6 +589,9 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
         layout = {}
         for name, (placements, keepout) in self.placements.items():
+            # Room will be sampled after
+            if 'room' in name:
+                continue
             conflicted = True
             for _ in range(100):
                 xy = self.draw_placement(placements, keepout)
@@ -766,6 +783,65 @@ class Engine(gym.Env, gym.utils.EzPickle):
                     'group': GROUP_CIRCLE,
                     'rgba': COLOR_CIRCLE * [1, 1, 1, 0.1]}
             world_config['geoms']['circle'] = geom
+        if self.place_room:
+            room_size = max(self.placements_extents)
+            size, height, self.room_wall_thickness = room_size, 0.3, 0.05
+            """
+               1
+             ------
+            4|    |2
+             |    |
+             ------
+               3
+            """
+            infos = [
+                {"pos": np.array([0, room_size, height]), "rot":0},
+                {"pos": np.array([room_size, 0, height]), "rot": np.pi/2.},
+                {"pos": np.array([0, -room_size, height]), "rot": 0},
+                {"pos": np.array([-room_size, 0, height]), "rot": np.pi/2.},]
+            for i in range(4):
+                name = f'room_wall{i}'
+                geom = {'name': name,
+                        'size': np.array([size, self.room_wall_thickness, height]),
+                        'pos': infos[i]["pos"],
+                        'rot': infos[i]["rot"],
+                        'type': 'box',
+                        'group': GROUP_ROOM,
+                        'rgba': COLOR_WALL}
+                world_config['geoms'][name] = geom
+            if self.room_type == 0:
+                self.room_wall_nums = 5
+                name = f'room_wall4'
+                self.center_wall_size = size * 2 / 3.
+                geom = {'name': name,
+                        'size': np.array([self.center_wall_size, self.room_wall_thickness, height]),
+                        'pos': np.array([-self.center_wall_size / 2., 0, height]),
+                        'rot': 0,
+                        'type': 'box',
+                        'group': GROUP_ROOM,
+                        'rgba': COLOR_WALL}
+                world_config['geoms'][name] = geom
+            if self.room_type == 1:
+                self.room_wall_nums = 10
+                self.center_wall_size = size / 3.
+                self.corner_wall_size = size / 6.
+                infos = [
+                    {"pos": np.array([0, 0, height]), "x_size": self.center_wall_size, "rot": 0},
+                    {"pos": np.array([0, 0, height]), "x_size": self.center_wall_size, "rot": np.pi / 2.},
+                    {"pos": np.array([room_size * 5 / 6., 0, height]), "x_size": self.corner_wall_size, "rot": 0},
+                    {"pos": np.array([-room_size * 5 / 6., 0, height]), "x_size": self.corner_wall_size, "rot": 0},
+                    {"pos": np.array([0, room_size * 5 / 6., height]), "x_size": self.corner_wall_size, "rot": np.pi / 2.},
+                    {"pos": np.array([0, -room_size * 5 / 6., height]), "x_size": self.corner_wall_size, "rot": np.pi / 2.},]
+                for idx, info in enumerate(infos):
+                    name = f'room_wall{idx+4}'
+                    geom = {'name': name,
+                            'size': np.array([info["x_size"], self.room_wall_thickness, height]),
+                            'pos': info["pos"],
+                            'rot': info["rot"],
+                            'type': 'box',
+                            'group': GROUP_ROOM,
+                            'rgba': COLOR_WALL}
+                    world_config['geoms'][name] = geom
 
         # Extra mocap bodies used for control (equality to object of same name)
         world_config['mocaps'] = {}
@@ -858,6 +934,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         else:
             self.world.reset(build=False)
             self.world.rebuild(self.world_config_dict, state=False)
+
         # Redo a small amount of work, and setup initial goal state
         self.build_goal()
 
@@ -979,6 +1056,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         '''
         body = self.model.body_name2id('robot')
         grp = np.asarray([i == group for i in range(int(const.NGROUP))], dtype='uint8')
+
         pos = np.asarray(self.world.robot_pos(), dtype='float64')
         mat_t = self.world.robot_mat()
         obs = np.zeros(self.lidar_num_bins)
@@ -1093,6 +1171,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             obs['walls_lidar'] = self.obs_lidar(self.walls_pos, GROUP_WALL)
         if self.observe_hazards:
             obs['hazards_lidar'] = self.obs_lidar(self.hazards_pos, GROUP_HAZARD)
+            if self.place_room:
+                obs['hazards_lidar'] = self.obs_lidar(self.hazards_pos, GROUP_HAZARD)
         if self.observe_vases:
             obs['vases_lidar'] = self.obs_lidar(self.vases_pos, GROUP_VASE)
         if self.gremlins_num and self.observe_gremlins:
@@ -1105,6 +1185,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 obs['buttons_lidar'] = self.obs_lidar(self.buttons_pos, GROUP_BUTTON)
             else:
                 obs['buttons_lidar'] = np.zeros(self.lidar_num_bins)
+        if self.place_room:
+            print(self.obs_lidar(self.room_walls_pos, GROUP_ROOM))
         if self.observe_qpos:
             obs['qpos'] = self.data.qpos.copy()
         if self.observe_qvel:
@@ -1241,6 +1323,13 @@ class Engine(gym.Env, gym.utils.EzPickle):
         assert not self.done, 'Environment must be reset before stepping'
 
         info = {}
+        if self.place_room:
+            print(self.obs_lidar(self.room_walls_pos, GROUP_ROOM))
+
+        if self.point_straight:
+            action = np.array(action, copy=False)
+            action[0] = 0.45 * action[0] + 0.55
+            action[0] /= 50.
 
         # Set action
         action_range = self.model.actuator_ctrlrange
@@ -1482,6 +1571,9 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 offset += self.render_lidar_offset_delta
             if 'vases_lidar' in self.obs_space_dict:
                 self.render_lidar(self.vases_pos, COLOR_VASE, offset, GROUP_VASE)
+                offset += self.render_lidar_offset_delta
+            if self.place_room:
+                self.render_lidar(self.room_walls_pos, COLOR_VASE, offset, GROUP_ROOM)
                 offset += self.render_lidar_offset_delta
 
         # Add goal marker
