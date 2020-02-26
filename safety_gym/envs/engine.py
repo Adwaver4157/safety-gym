@@ -118,6 +118,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'place_four_room': False,
         'room_wall_keepout': 0,
         'room_type': 0,
+        'room_small_wall_num': 20,
 
         # Starting position distribution
         'randomize_layout': True,  # If false, set the random seed before layout to constant
@@ -140,6 +141,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'observe_remaining': False,  # Observe the fraction of steps remaining
         'observe_walls': False,  # Observe the walls with a lidar space
         'observe_hazards': False,  # Observe the vector from agent to hazards
+        'observe_room_walls': False,  # Observe the vector from agent to room walls
         'observe_vases': False,  # Observe the vector from agent to vases
         'observe_pillars': False,  # Lidar observation of pillar object positions
         'observe_buttons': False,  # Lidar observation of button object positions
@@ -472,6 +474,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             obs_space_dict['walls_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
         if self.observe_hazards:
             obs_space_dict['hazards_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
+        if self.observe_room_walls:
+            obs_space_dict['room_walls_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
         if self.observe_vases:
             obs_space_dict['vases_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
         if self.gremlins_num and self.observe_gremlins:
@@ -784,6 +788,10 @@ class Engine(gym.Env, gym.utils.EzPickle):
                     'rgba': COLOR_CIRCLE * [1, 1, 1, 0.1]}
             world_config['geoms']['circle'] = geom
         if self.place_room:
+            """
+            NOTE: Pseudo lidar cannot correctly detect rectangular prism.
+            So, we divide the large rectangular prism into small ones.
+            """
             room_size = max(self.placements_extents)
             size, height, self.room_wall_thickness = room_size, 0.3, 0.05
             """
@@ -794,54 +802,101 @@ class Engine(gym.Env, gym.utils.EzPickle):
              ------
                3
             """
+            small_wall_size = 2 * room_size / self.room_small_wall_num
+            small_walls = np.arange(- room_size + small_wall_size / 2.,
+                                    room_size - small_wall_size / 2. + 1e-3,
+                                    small_wall_size)
+            room_wall_num = 0
             infos = [
-                {"pos": np.array([0, room_size, height]), "rot":0},
-                {"pos": np.array([room_size, 0, height]), "rot": np.pi/2.},
-                {"pos": np.array([0, -room_size, height]), "rot": 0},
-                {"pos": np.array([-room_size, 0, height]), "rot": np.pi/2.},]
-            for i in range(4):
-                name = f'room_wall{i}'
-                geom = {'name': name,
-                        'size': np.array([size, self.room_wall_thickness, height]),
-                        'pos': infos[i]["pos"],
-                        'rot': infos[i]["rot"],
-                        'type': 'box',
-                        'group': GROUP_ROOM,
-                        'rgba': COLOR_WALL}
-                world_config['geoms'][name] = geom
-            if self.room_type == 0:
-                self.room_wall_nums = 5
-                name = f'room_wall4'
-                self.center_wall_size = size * 2 / 3.
-                geom = {'name': name,
-                        'size': np.array([self.center_wall_size, self.room_wall_thickness, height]),
-                        'pos': np.array([-self.center_wall_size / 2., 0, height]),
-                        'rot': 0,
-                        'type': 'box',
-                        'group': GROUP_ROOM,
-                        'rgba': COLOR_WALL}
-                world_config['geoms'][name] = geom
-            if self.room_type == 1:
-                self.room_wall_nums = 10
-                self.center_wall_size = size / 3.
-                self.corner_wall_size = size / 6.
-                infos = [
-                    {"pos": np.array([0, 0, height]), "x_size": self.center_wall_size, "rot": 0},
-                    {"pos": np.array([0, 0, height]), "x_size": self.center_wall_size, "rot": np.pi / 2.},
-                    {"pos": np.array([room_size * 5 / 6., 0, height]), "x_size": self.corner_wall_size, "rot": 0},
-                    {"pos": np.array([-room_size * 5 / 6., 0, height]), "x_size": self.corner_wall_size, "rot": 0},
-                    {"pos": np.array([0, room_size * 5 / 6., height]), "x_size": self.corner_wall_size, "rot": np.pi / 2.},
-                    {"pos": np.array([0, -room_size * 5 / 6., height]), "x_size": self.corner_wall_size, "rot": np.pi / 2.},]
-                for idx, info in enumerate(infos):
-                    name = f'room_wall{idx+4}'
+                {"pos_x": small_walls.copy(),
+                 "pos_y": np.ones(shape=self.room_small_wall_num) * room_size,
+                 "rot": 0},
+                {"pos_x": np.ones(shape=self.room_small_wall_num) * room_size,
+                 "pos_y": small_walls.copy(),
+                 "rot": np.pi/2.},
+                {"pos_x": small_walls.copy(),
+                 "pos_y": -np.ones(shape=self.room_small_wall_num) * room_size,
+                 "rot": 0},
+                {"pos_x": -np.ones(shape=self.room_small_wall_num) * room_size,
+                 "pos_y": small_walls.copy(),
+                 "rot": np.pi/2.}]
+            for idx_large_wall in range(4):
+                for idx_small_wall in range(self.room_small_wall_num):
+                    name = f'room_wall{room_wall_num}'
                     geom = {'name': name,
-                            'size': np.array([info["x_size"], self.room_wall_thickness, height]),
-                            'pos': info["pos"],
-                            'rot': info["rot"],
+                            'size': np.array([small_wall_size, self.room_wall_thickness, height]),
+                            'pos': np.array([
+                                infos[idx_large_wall]["pos_x"][idx_small_wall],
+                                infos[idx_large_wall]["pos_y"][idx_small_wall],
+                                height]),
+                            'rot': infos[idx_large_wall]["rot"],
                             'type': 'box',
                             'group': GROUP_ROOM,
                             'rgba': COLOR_WALL}
                     world_config['geoms'][name] = geom
+                    room_wall_num += 1
+            if self.room_type == 0:
+                self.center_wall_size = 2 * room_size * 2 / 3.
+                pos_xs = np.arange(- room_size + small_wall_size / 2.,
+                                   -room_size + small_wall_size / 2. + self.center_wall_size + 1e-3,
+                                   small_wall_size)
+                for pos_x in pos_xs:
+                    name = f'room_wall{room_wall_num}'
+                    geom = {'name': name,
+                            'size': np.array([small_wall_size, self.room_wall_thickness, height]),
+                            'pos': np.array([pos_x, 0, height]),
+                            'rot': 0,
+                            'type': 'box',
+                            'group': GROUP_ROOM,
+                            'rgba': COLOR_WALL}
+                    world_config['geoms'][name] = geom
+                    room_wall_num += 1
+            if self.room_type == 1:
+                self.center_wall_size = size / 4.
+                self.corner_wall_size = size / 4.
+                # Center walls
+                poses = np.arange(- self.center_wall_size + small_wall_size / 2.,
+                                    self.center_wall_size - small_wall_size / 2. + 1e-3,
+                                    small_wall_size)
+                # Both X-direction and Y-direction
+                for i in range(2):
+                    for pos in poses:
+                        _pos = [0, 0, height]
+                        _pos[i] = pos
+                        rot = np.pi / 2 * i
+                        name = f'room_wall{room_wall_num}'
+                        geom = {'name': name,
+                                'size': np.array([small_wall_size, self.room_wall_thickness, height]),
+                                'pos': _pos,
+                                'rot': rot,
+                                'type': 'box',
+                                'group': GROUP_ROOM,
+                                'rgba': COLOR_WALL}
+                        world_config['geoms'][name] = geom
+                        room_wall_num += 1
+                poses = np.arange(- room_size + small_wall_size / 2.,
+                                  - room_size + self.corner_wall_size - small_wall_size / 2. + 1e-3,
+                                    small_wall_size)
+                for i in range(4):
+                    for pos in poses:
+                        if i < 2:
+                            _pos = [pos * (i * 2 - 1), 0, height]
+                            rot = 0
+                        else:
+                            _pos = [0, pos * ((i - 2) * 2 - 1), height]
+                            rot = np.pi / 2.
+                        name = f'room_wall{room_wall_num}'
+                        geom = {'name': name,
+                                'size': np.array([small_wall_size, self.room_wall_thickness, height]),
+                                'pos': _pos,
+                                'rot': rot,
+                                'type': 'box',
+                                'group': GROUP_ROOM,
+                                'rgba': COLOR_WALL}
+                        world_config['geoms'][name] = geom
+                        room_wall_num += 1
+            self.room_wall_nums = room_wall_num
+            self.room_wall_keepout = np.linalg.norm([small_wall_size, self.room_wall_thickness])
 
         # Extra mocap bodies used for control (equality to object of same name)
         world_config['mocaps'] = {}
@@ -1171,8 +1226,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             obs['walls_lidar'] = self.obs_lidar(self.walls_pos, GROUP_WALL)
         if self.observe_hazards:
             obs['hazards_lidar'] = self.obs_lidar(self.hazards_pos, GROUP_HAZARD)
-            if self.place_room:
-                obs['hazards_lidar'] = self.obs_lidar(self.hazards_pos, GROUP_HAZARD)
+        if self.observe_room_walls:
+            obs['room_walls_lidar'] = self.obs_lidar(self.room_walls_pos, GROUP_HAZARD)
         if self.observe_vases:
             obs['vases_lidar'] = self.obs_lidar(self.vases_pos, GROUP_VASE)
         if self.gremlins_num and self.observe_gremlins:
@@ -1185,8 +1240,6 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 obs['buttons_lidar'] = self.obs_lidar(self.buttons_pos, GROUP_BUTTON)
             else:
                 obs['buttons_lidar'] = np.zeros(self.lidar_num_bins)
-        if self.place_room:
-            print(self.obs_lidar(self.room_walls_pos, GROUP_ROOM))
         if self.observe_qpos:
             obs['qpos'] = self.data.qpos.copy()
         if self.observe_qvel:
@@ -1563,6 +1616,9 @@ class Engine(gym.Env, gym.utils.EzPickle):
             if 'hazards_lidar' in self.obs_space_dict:
                 self.render_lidar(self.hazards_pos, COLOR_HAZARD, offset, GROUP_HAZARD)
                 offset += self.render_lidar_offset_delta
+            if 'room_walls_lidar' in self.obs_space_dict:
+                self.render_lidar(self.room_walls_pos, COLOR_HAZARD, offset, GROUP_ROOM)
+                offset += self.render_lidar_offset_delta
             if 'pillars_lidar' in self.obs_space_dict:
                 self.render_lidar(self.pillars_pos, COLOR_PILLAR, offset, GROUP_PILLAR)
                 offset += self.render_lidar_offset_delta
@@ -1571,9 +1627,6 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 offset += self.render_lidar_offset_delta
             if 'vases_lidar' in self.obs_space_dict:
                 self.render_lidar(self.vases_pos, COLOR_VASE, offset, GROUP_VASE)
-                offset += self.render_lidar_offset_delta
-            if self.place_room:
-                self.render_lidar(self.room_walls_pos, COLOR_VASE, offset, GROUP_ROOM)
                 offset += self.render_lidar_offset_delta
 
         # Add goal marker
