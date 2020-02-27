@@ -1387,8 +1387,10 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
         if self.point_straight:
             action = np.array(action, copy=False)
-            action[0] = 0.45 * action[0] + 0.55
-            action[0] /= 50.
+            # forward movement range [0.01, 0.03]
+            # z-axis rotation range [-0.25, 0.25]
+            action[0] = 0.02 * action[0] + 0.01
+            action[1] /= 4.
 
         # Set action
         action_range = self.model.actuator_ctrlrange
@@ -1397,6 +1399,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
                                     action_range[:, 1])  # np.clip(action * 2 / action_scale, -1, 1)
         if self.action_noise:
             self.data.ctrl[:] += self.action_noise * self.rs.randn(self.model.nu)
+
+        info['goal_met'] = False
 
         # Simulate physics forward
         exception = False
@@ -1425,7 +1429,6 @@ class Engine(gym.Env, gym.utils.EzPickle):
             # Button timer (used to delay button resampling)
             self.buttons_timer_tick()
 
-            info['goal_met'] = False
             # Goal processing
             if self.goal_met():
                 info['goal_met'] = True
