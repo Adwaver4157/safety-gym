@@ -987,9 +987,15 @@ class Engine(gym.Env, gym.utils.EzPickle):
             self.world = World(self.world_config_dict)
             self.world.reset()
             self.world.build()
+            self.build_placements_dict()
         else:
             self.world.reset(build=False)
             self.world.rebuild(self.world_config_dict, state=False)
+
+        # Room will be sampled after
+        if self.place_room:
+            for i in range(self.room_walls_num):
+                self.layout["room_wall{}".format(i)] = self.data.get_body_xpos(f'room_wall{i}').copy()[:2]
 
         # Redo a small amount of work, and setup initial goal state
         self.build_goal()
