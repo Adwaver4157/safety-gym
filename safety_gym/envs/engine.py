@@ -278,7 +278,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'pillars_num': 0,  # Number of pillars in the world
         'pillars_placements': None,  # Pillars placements list (defaults to full extents)
         'pillars_locations': [],  # Fixed locations to override placements
-        'pillars_keepout': 0.3,  # Radius for placement of pillars
+        # 'pillars_keepout': 0.3,  # Radius for placement of pillars
+        'pillars_keepout': 0.45,  # Radius for placement of pillars
         'pillars_size': 0.2,  # Half-size (radius) of pillar objects
         'pillars_height': 0.2,  # Half-height of pillars geoms
         'pillars_cost': 1.0,  # Cost (per step) for being in contact with a pillar
