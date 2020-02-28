@@ -1021,7 +1021,10 @@ class Engine(gym.Env, gym.utils.EzPickle):
         self.buttons_timer = 0
 
         self.clear()
-        self.build()
+        try:
+            self.build()
+        except ResamplingError:
+            self.build()
         # Save the layout at reset
         self.reset_layout = deepcopy(self.layout)
 
