@@ -320,6 +320,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         self.action_space = gym.spaces.Box(-1, 1, (self.robot.nu,), dtype=np.float32)
         self.build_observation_space()
         self.build_placements_dict()
+        self.build_room_walls()
 
         self.viewer = None
         self.world = None
@@ -545,10 +546,11 @@ class Engine(gym.Env, gym.utils.EzPickle):
         # Dictionary is map from object name -> tuple of (placements list, keepout)
         placements = {}
 
-        placements.update(self.placements_dict_from_object('robot'))
-        placements.update(self.placements_dict_from_object('wall'))
         if self.place_room:
             placements.update(self.placements_dict_from_object('room_wall'))
+
+        placements.update(self.placements_dict_from_object('robot'))
+        placements.update(self.placements_dict_from_object('wall'))
 
         if self.task in ['goal', 'push']:
             placements.update(self.placements_dict_from_object('goal'))
@@ -597,6 +599,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         for name, (placements, keepout) in self.placements.items():
             # Room will be sampled after
             if 'room' in name:
+                layout[name] = self.room_info[name]["pos"][:2]
                 continue
             conflicted = True
             for _ in range(100):
@@ -659,6 +662,99 @@ class Engine(gym.Env, gym.utils.EzPickle):
     def random_rot(self):
         ''' Use internal random state to get a random rotation in radians '''
         return self.rs.uniform(0, 2 * np.pi)
+
+    def build_room_walls(self):
+        if self.place_room:
+            self.room_info = {}
+            """
+            NOTE: Pseudo lidar cannot correctly detect rectangular prism.
+            So, we divide the large rectangular prism into small ones.
+            """
+            room_size = max(self.placements_extents)
+            size, height, self.room_wall_thickness = room_size, 0.3, 0.1
+            """
+               1
+             ------
+            4|    |2
+             |    |
+             ------
+               3
+            """
+            small_wall_size = 2 * room_size / self.room_small_wall_num
+            small_walls = np.arange(- room_size + small_wall_size / 2.,
+                                    room_size - small_wall_size / 2. + 1e-3,
+                                    small_wall_size)
+            room_walls_num = 0
+            infos = [
+                {"pos_x": small_walls.copy(),
+                 "pos_y": np.ones(shape=self.room_small_wall_num) * room_size,
+                 "rot": 0},
+                {"pos_x": np.ones(shape=self.room_small_wall_num) * room_size,
+                 "pos_y": small_walls.copy(),
+                 "rot": np.pi/2.},
+                {"pos_x": small_walls.copy(),
+                 "pos_y": -np.ones(shape=self.room_small_wall_num) * room_size,
+                 "rot": 0},
+                {"pos_x": -np.ones(shape=self.room_small_wall_num) * room_size,
+                 "pos_y": small_walls.copy(),
+                 "rot": np.pi/2.}]
+            for idx_large_wall in range(4):
+                for idx_small_wall in range(self.room_small_wall_num):
+                    name = f'room_wall{room_walls_num}'
+                    self.room_info[name] = {}
+                    self.room_info[name]["pos"] = np.array([
+                        infos[idx_large_wall]["pos_x"][idx_small_wall],
+                        infos[idx_large_wall]["pos_y"][idx_small_wall],
+                        height])
+                    self.room_info[name]["rot"] = infos[idx_large_wall]["rot"]
+                    room_walls_num += 1
+            if self.room_type == 0:
+                self.center_wall_size = 2 * room_size * 2 / 3.
+                pos_xs = np.arange(- room_size + small_wall_size / 2.,
+                                   -room_size + small_wall_size / 2. + self.center_wall_size + 1e-3,
+                                   small_wall_size)
+                for pos_x in pos_xs:
+                    name = f'room_wall{room_walls_num}'
+                    self.room_info[name] = {}
+                    self.room_info[name]["pos"] = np.array([pos_x, 0, height])
+                    self.room_info[name]["rot"] = 0
+                    room_walls_num += 1
+            if self.room_type == 1:
+                self.center_wall_size = size / 4.
+                self.corner_wall_size = size / 4.
+                # Center walls
+                poses = np.arange(- self.center_wall_size + small_wall_size / 2.,
+                                    self.center_wall_size - small_wall_size / 2. + 1e-3,
+                                    small_wall_size)
+                # Both X-direction and Y-direction
+                for i in range(2):
+                    for pos in poses:
+                        _pos = [0, 0, height]
+                        _pos[i] = pos
+                        rot = np.pi / 2 * i
+                        name = f'room_wall{room_walls_num}'
+                        self.room_info[name] = {}
+                        self.room_info[name]["pos"] = _pos
+                        self.room_info[name]["rot"] = rot
+                        room_walls_num += 1
+                poses = np.arange(- room_size + small_wall_size / 2.,
+                                  - room_size + self.corner_wall_size - small_wall_size / 2. + 1e-3,
+                                    small_wall_size)
+                for i in range(4):
+                    for pos in poses:
+                        if i < 2:
+                            _pos = [pos * (i * 2 - 1), 0, height]
+                            rot = 0
+                        else:
+                            _pos = [0, pos * ((i - 2) * 2 - 1), height]
+                            rot = np.pi / 2.
+                        name = f'room_wall{room_walls_num}'
+                        self.room_info[name] = {}
+                        self.room_info[name]["pos"] = _pos
+                        self.room_info[name]["rot"] = rot
+                        room_walls_num += 1
+            self.room_walls_num = room_walls_num
+            self.room_walls_keepout = np.linalg.norm([small_wall_size, self.room_wall_thickness])
 
     def build_world_config(self):
         ''' Create a world_config from our own config '''
