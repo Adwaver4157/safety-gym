@@ -121,6 +121,10 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'room_small_wall_num': 20,
         'room_walls_num': 1,
 
+        # safety-rl
+        'hazards_order': False,
+        'pillars_order': False,
+
         # Starting position distribution
         'randomize_layout': True,  # If false, set the random seed before layout to constant
         'build_resample': True,  # If true, rejection sample from valid environments
@@ -1356,9 +1360,28 @@ class Engine(gym.Env, gym.utils.EzPickle):
         if self.observe_vision:
             obs['vision'] = self.obs_vision()
         if self.observation_flatten:
+            keys = ["accelerometer", "gyro", "magnetometer", "velocimeter"]
+            if self.hazards_order:
+                idx = 2
+            elif self.pillars_order:
+                idx = 3
+            else:
+                idx = None
+
+            if idx is None:
+                keys = sorted(self.obs_space_dict.keys())
+            else:
+                if self.observe_hazards:
+                    keys.insert(idx, "hazards_lidar")
+                elif self.observe_pillars:
+                    keys.insert(idx, "pillars_lidar")
+                elif self.observe_room_walls:
+                    keys.insert(idx, "room_walls_lidar")
+
             flat_obs = np.zeros(self.obs_flat_size)
             offset = 0
-            for k in sorted(self.obs_space_dict.keys()):
+            # for k in sorted(self.obs_space_dict.keys()):
+            for k in keys:
                 k_size = np.prod(obs[k].shape)
                 flat_obs[offset:offset + k_size] = obs[k].flat
                 offset += k_size
