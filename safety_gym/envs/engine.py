@@ -1360,9 +1360,14 @@ class Engine(gym.Env, gym.utils.EzPickle):
         if self.observe_vision:
             obs['vision'] = self.obs_vision()
         if self.observation_flatten:
-            keys = ["accelerometer", "gyro", "magnetometer", "velocimeter"]
+            keys = sorted(self.obs_space_dict.keys())
             if self.hazards_order:
-                idx = 2
+                if "point" in self.robot_base or "doggo" in self.robot_base:
+                    idx = 2
+                elif "car" in self.robot_base:
+                    idx = 4
+                else:
+                    raise NotImplementedError
             elif self.pillars_order:
                 idx = 3
             else:
@@ -1372,10 +1377,13 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 keys = sorted(self.obs_space_dict.keys())
             else:
                 if self.observe_hazards:
+                    keys.remove("hazards_lidar")
                     keys.insert(idx, "hazards_lidar")
                 elif self.observe_pillars:
+                    keys.remove("pillars_lidar")
                     keys.insert(idx, "pillars_lidar")
                 elif self.observe_room_walls:
+                    keys.remove("room_walls_lidar")
                     keys.insert(idx, "room_walls_lidar")
 
             flat_obs = np.zeros(self.obs_flat_size)
