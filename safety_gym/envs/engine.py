@@ -292,9 +292,9 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'gremlins_num': 0,  # Number of gremlins in the world
         'gremlins_placements': None,  # Gremlins placements list (defaults to full extents)
         'gremlins_locations': [],  # Fixed locations to override placements
-        'gremlins_keepout': 0.5,  # Radius for keeping out (contains gremlin path)
-        'gremlins_travel': 0.3,  # Radius of the circle traveled in
-        'gremlins_size': 0.1,  # Half-size (radius) of gremlin objects
+        'gremlins_keepout': 0.4,  # Radius for keeping out (contains gremlin path)
+        'gremlins_travel': 0.4,  # Radius of the circle traveled in
+        'gremlins_size': 0.2,  # Half-size (radius) of gremlin objects
         'gremlins_density': 0.001,  # Density of gremlins
         'gremlins_contact_cost': 1.0,  # Cost for touching a gremlin
         'gremlins_dist_threshold': 0.2,  # Threshold for cost for being too close
@@ -479,16 +479,20 @@ class Engine(gym.Env, gym.utils.EzPickle):
             obs_space_dict['remaining'] = gym.spaces.Box(0.0, 1.0, (1,), dtype=np.float32)
         if self.walls_num and self.observe_walls:
             obs_space_dict['walls_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
-        if self.observe_hazards:
-            obs_space_dict['hazards_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
-        if self.observe_room_walls:
-            obs_space_dict['room_walls_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
-        if self.observe_vases:
-            obs_space_dict['vases_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
-        if self.gremlins_num and self.observe_gremlins:
-            obs_space_dict['gremlins_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
-        if self.pillars_num and self.observe_pillars:
-            obs_space_dict['pillars_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
+        if self.hazards_order or self.pillars_order:
+            key = "hazards_lidar" if self.hazards_order else "pillars_lidar"
+            obs_space_dict[key] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
+        else:
+            if self.observe_hazards:
+                obs_space_dict['hazards_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
+            if self.observe_room_walls:
+                obs_space_dict['room_walls_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
+            if self.observe_vases:
+                obs_space_dict['vases_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
+            if self.gremlins_num and self.observe_gremlins:
+                obs_space_dict['gremlins_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
+            if self.pillars_num and self.observe_pillars:
+                obs_space_dict['pillars_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
         if self.buttons_num and self.observe_buttons:
             obs_space_dict['buttons_lidar'] = gym.spaces.Box(0.0, 1.0, (self.lidar_num_bins,), dtype=np.float32)
         if self.observe_qpos:
@@ -1360,36 +1364,25 @@ class Engine(gym.Env, gym.utils.EzPickle):
         if self.observe_vision:
             obs['vision'] = self.obs_vision()
         if self.observation_flatten:
-            keys = sorted(self.obs_space_dict.keys())
             if self.hazards_order:
-                if "point" in self.robot_base or "doggo" in self.robot_base:
-                    idx = 2
-                elif "car" in self.robot_base:
-                    idx = 4
-                else:
-                    raise NotImplementedError
+                key = "hazards_lidar"
             elif self.pillars_order:
-                idx = 3
+                key = "pillars_lidar"
             else:
-                idx = None
-
-            if idx is None:
-                keys = sorted(self.obs_space_dict.keys())
-            else:
+                key = None
+            if key is not None:
                 if self.observe_hazards:
-                    keys.remove("hazards_lidar")
-                    keys.insert(idx, "hazards_lidar")
+                    obs[key] = obs['hazards_lidar']
                 elif self.observe_pillars:
-                    keys.remove("pillars_lidar")
-                    keys.insert(idx, "pillars_lidar")
+                    obs[key] = obs["pillars_lidar"]
                 elif self.observe_room_walls:
-                    keys.remove("room_walls_lidar")
-                    keys.insert(idx, "room_walls_lidar")
+                    obs[key] = obs["room_walls_lidar"]
+                elif self.observe_gremlins:
+                    obs[key] = obs['gremlins_lidar']
 
             flat_obs = np.zeros(self.obs_flat_size)
             offset = 0
-            # for k in sorted(self.obs_space_dict.keys()):
-            for k in keys:
+            for k in sorted(self.obs_space_dict.keys()):
                 k_size = np.prod(obs[k].shape)
                 flat_obs[offset:offset + k_size] = obs[k].flat
                 offset += k_size
