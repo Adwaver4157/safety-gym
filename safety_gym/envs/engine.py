@@ -807,7 +807,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
                           'size': np.ones(3) * self.gremlins_size,
                           'type': 'box',
                           'density': self.gremlins_density,
-                          'pos': np.r_[self.layout[name.replace('obj', '')], self.gremlins_size],
+                          'pos': np.r_[self.layout[name.replace('obj', '')], self.gremlins_size * 0.6],
                           'rot': self._gremlins_rots[i],
                           'group': GROUP_GREMLIN,
                           'rgba': COLOR_GREMLIN}
@@ -1364,25 +1364,22 @@ class Engine(gym.Env, gym.utils.EzPickle):
         if self.observe_vision:
             obs['vision'] = self.obs_vision()
         if self.observation_flatten:
-            if self.hazards_order:
-                key = "hazards_lidar"
-            elif self.pillars_order:
-                key = "pillars_lidar"
-            else:
-                key = None
-            if key is not None:
-                if self.observe_hazards:
-                    obs[key] = obs['hazards_lidar']
-                elif self.observe_pillars:
-                    obs[key] = obs["pillars_lidar"]
-                elif self.observe_room_walls:
-                    obs[key] = obs["room_walls_lidar"]
-                elif self.observe_gremlins:
-                    obs[key] = obs['gremlins_lidar']
+            if self.observe_hazards:
+                obs["pillars_lidar"] = obs['hazards_lidar']
+                obs.pop("hazards_lidar")
+            elif self.observe_pillars:
+                obs["pillars_lidar"] = obs["pillars_lidar"]
+                # obs.pop("pillars_lidar")
+            elif self.observe_room_walls:
+                obs["pillars_lidar"] = obs["room_walls_lidar"]
+                obs.pop("room_walls_lidar")
+            elif self.observe_gremlins:
+                obs["pillars_lidar"] = obs['gremlins_lidar']
+                obs.pop("gremlins_lidar")
 
             flat_obs = np.zeros(self.obs_flat_size)
             offset = 0
-            for k in sorted(self.obs_space_dict.keys()):
+            for k in sorted(obs.keys()):
                 k_size = np.prod(obs[k].shape)
                 flat_obs[offset:offset + k_size] = obs[k].flat
                 offset += k_size
