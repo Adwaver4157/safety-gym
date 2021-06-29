@@ -312,7 +312,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
     def __init__(self, config={}):
         # First, parse configuration. Important note: LOTS of stuff happens in
         # parse, and many attributes of the class get set through setattr. If you
-        # are trying to track down where an attribute gets initially set, and 
+        # are trying to track down where an attribute gets initially set, and
         # can't find it anywhere else, it's probably set via the config dict
         # and this parse function.
         self.parse(config)
@@ -665,7 +665,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 probs = np.array(areas) / np.sum(areas)
                 choice = constrained[self.rs.choice(len(constrained), p=probs)]
         xmin, ymin, xmax, ymax = choice
-        return np.array([self.rs.uniform(xmin, xmax), self.rs.uniform(ymin, ymax)])
+        # return np.array([self.rs.uniform(xmin, xmax), self.rs.uniform(ymin, ymax)])
+        return np.array([-0.5, self.rs.uniform(ymin, ymax)])
 
     def random_rot(self):
         ''' Use internal random state to get a random rotation in radians '''
@@ -699,13 +700,13 @@ class Engine(gym.Env, gym.utils.EzPickle):
                  "rot": 0},
                 {"pos_x": np.ones(shape=self.room_small_wall_num) * room_size,
                  "pos_y": small_walls.copy(),
-                 "rot": np.pi/2.},
+                 "rot": np.pi / 2.},
                 {"pos_x": small_walls.copy(),
                  "pos_y": -np.ones(shape=self.room_small_wall_num) * room_size,
                  "rot": 0},
                 {"pos_x": -np.ones(shape=self.room_small_wall_num) * room_size,
                  "pos_y": small_walls.copy(),
-                 "rot": np.pi/2.}]
+                 "rot": np.pi / 2.}]
             for idx_large_wall in range(4):
                 for idx_small_wall in range(self.room_small_wall_num):
                     name = f'room_wall{room_walls_num}'
@@ -732,8 +733,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 self.corner_wall_size = size / 4.
                 # Center walls
                 poses = np.arange(- self.center_wall_size + small_wall_size / 2.,
-                                    self.center_wall_size - small_wall_size / 2. + 1e-3,
-                                    small_wall_size)
+                                  self.center_wall_size - small_wall_size / 2. + 1e-3,
+                                  small_wall_size)
                 # Both X-direction and Y-direction
                 for i in range(2):
                     for pos in poses:
@@ -747,7 +748,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
                         room_walls_num += 1
                 poses = np.arange(- room_size + small_wall_size / 2.,
                                   - room_size + self.corner_wall_size - small_wall_size / 2. + 1e-3,
-                                    small_wall_size)
+                                  small_wall_size)
                 for i in range(4):
                     for pos in poses:
                         if i < 2:
@@ -919,13 +920,13 @@ class Engine(gym.Env, gym.utils.EzPickle):
                  "rot": 0},
                 {"pos_x": np.ones(shape=self.room_small_wall_num) * room_size,
                  "pos_y": small_walls.copy(),
-                 "rot": np.pi/2.},
+                 "rot": np.pi / 2.},
                 {"pos_x": small_walls.copy(),
                  "pos_y": -np.ones(shape=self.room_small_wall_num) * room_size,
                  "rot": 0},
                 {"pos_x": -np.ones(shape=self.room_small_wall_num) * room_size,
                  "pos_y": small_walls.copy(),
-                 "rot": np.pi/2.}]
+                 "rot": np.pi / 2.}]
             for idx_large_wall in range(4):
                 for idx_small_wall in range(self.room_small_wall_num):
                     name = f'room_wall{room_walls_num}'
@@ -962,8 +963,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 self.corner_wall_size = size / 4.
                 # Center walls
                 poses = np.arange(- self.center_wall_size + small_wall_size / 2.,
-                                    self.center_wall_size - small_wall_size / 2. + 1e-3,
-                                    small_wall_size)
+                                  self.center_wall_size - small_wall_size / 2. + 1e-3,
+                                  small_wall_size)
                 # Both X-direction and Y-direction
                 for i in range(2):
                     for pos in poses:
@@ -982,7 +983,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
                         room_walls_num += 1
                 poses = np.arange(- room_size + small_wall_size / 2.,
                                   - room_size + self.corner_wall_size - small_wall_size / 2. + 1e-3,
-                                    small_wall_size)
+                                  small_wall_size)
                 for i in range(4):
                     for pos in poses:
                         if i < 2:
@@ -1049,7 +1050,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
     def sample_goal_position(self):
         ''' Sample a new goal position and return True, else False if sample rejected '''
         placements, keepout = self.placements['goal']
-        goal_xy = self.draw_placement(placements, keepout)
+        # goal_xy = self.draw_placement(placements, keepout)
+        goal_xy = np.array([1.5, 0])
         for other_name, other_xy in self.layout.items():
             other_keepout = self.placements[other_name][1]
             dist = np.sqrt(np.sum(np.square(goal_xy - other_xy)))
