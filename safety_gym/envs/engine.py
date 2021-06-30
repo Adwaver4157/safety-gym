@@ -12,7 +12,7 @@ from mujoco_py import MjViewer, MujocoException, const, MjRenderContextOffscreen
 from safety_gym.envs.world import World, Robot
 
 import sys
-
+import time
 # Distinct colors for different types of objects.
 # For now this is mostly used for visualization.
 # This also affects the vision observation, so if training from pixels.
@@ -1378,7 +1378,6 @@ class Engine(gym.Env, gym.utils.EzPickle):
             elif self.observe_gremlins:
                 obs["pillars_lidar"] = obs['gremlins_lidar']
                 obs.pop("gremlins_lidar")
-
             flat_obs = np.zeros(self.obs_flat_size)
             offset = 0
             for k in sorted(obs.keys()):
@@ -1528,6 +1527,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         exception = False
         for _ in range(self.rs.binomial(self.frameskip_binom_n, self.frameskip_binom_p)):
             try:
+                time.sleep(.002)
                 self.set_mocaps()
                 self.sim.step()  # Physics simulation step
             except MujocoException as me:
