@@ -670,7 +670,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
 
     def random_rot(self):
         ''' Use internal random state to get a random rotation in radians '''
-        return self.rs.uniform(0, 2 * np.pi)
+        # return self.rs.uniform(0, 2 * np.pi)
+        return self.rs.uniform(np.pi/4, 3*np.pi/4)
 
     def build_room_walls(self):
         if self.place_room:
