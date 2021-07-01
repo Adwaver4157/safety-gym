@@ -609,6 +609,9 @@ class Engine(gym.Env, gym.utils.EzPickle):
             if 'room' in name:
                 layout[name] = self.room_info[name]["pos"][:2]
                 continue
+            elif 'goal' in name:
+                layout[name] = np.array([1.5, 0])
+                continue
             conflicted = True
             for _ in range(100):
                 xy = self.draw_placement(placements, keepout)
@@ -666,12 +669,12 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 choice = constrained[self.rs.choice(len(constrained), p=probs)]
         xmin, ymin, xmax, ymax = choice
         # return np.array([self.rs.uniform(xmin, xmax), self.rs.uniform(ymin, ymax)])
-        return np.array([-0.5, self.rs.uniform(ymin, ymax)])
+        return np.array([-1, 0])
 
     def random_rot(self):
         ''' Use internal random state to get a random rotation in radians '''
         # return self.rs.uniform(0, 2 * np.pi)
-        return self.rs.uniform(np.pi/4, 3*np.pi/4)
+        return self.rs.uniform(- np.pi / 4, - np.pi / 4)
 
     def build_room_walls(self):
         if self.place_room:
