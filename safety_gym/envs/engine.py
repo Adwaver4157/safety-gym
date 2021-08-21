@@ -1514,7 +1514,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             action = np.array(action, copy=False)
             # forward movement range [0.01, 0.03]
             # z-axis rotation range [-0.25, 0.25]
-            action[0] = 0.02 * (1 + action[0])
+            # action[0] = 0.02 * (1 + action[0])
+            action[0] = 0.5 * (1 + action[0])
             # action[1] /= 2.
 
         # Set action
