@@ -111,7 +111,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'robot_base': 'xmls/car.xml',  # Which robot XML to use as the base
         'robot_rot': None,  # Override robot starting angle
         'point_straight': False,
-        'forward_coef': 0.5,
+        'forward_coef': 0.02,
 
         # Task
         'place_room': False,
