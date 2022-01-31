@@ -112,6 +112,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'robot_rot': None,  # Override robot starting angle
         'point_straight': False,
         'forward_coef': 0.02,
+        'rotate_coef': 1,
 
         # Task
         'place_room': False,
@@ -1517,6 +1518,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
             # forward movement range [0.01, 0.03]
             # z-axis rotation range [-0.25, 0.25]
             action[0] = self.forward_coef * (1 + action[0])
+            action[1] = self.rotate_coef * action[1]
             # action[0] = np.abs(action[0])
             # action[1] /= 2.
 
