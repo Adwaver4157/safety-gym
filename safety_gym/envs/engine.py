@@ -113,6 +113,7 @@ class Engine(gym.Env, gym.utils.EzPickle):
         'point_straight': False,
         'forward_coef': 0.02,
         'rotate_coef': 1,
+        'forward_min': 0,
 
         # Task
         'place_room': False,
@@ -1517,7 +1518,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             action = np.array(action, copy=False)
             # forward movement range [0.01, 0.03]
             # z-axis rotation range [-0.25, 0.25]
-            action[0] = self.forward_coef * (1 + action[0])
+            _range = 2 * self.forward_coef - self.forward_min
+            action[0] = _range * (1 + action[0]) / 2 + self.forward_min
             action[1] = self.rotate_coef * action[1]
             # action[0] = np.abs(action[0])
             # action[1] /= 2.
