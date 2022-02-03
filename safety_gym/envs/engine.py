@@ -604,16 +604,25 @@ class Engine(gym.Env, gym.utils.EzPickle):
             return True
 
         layout = {}
+        """
+        layout['goal'] = np.array([0, 0])
+        layout['robot'] = np.array([0, 0])
+        for i in range(10):
+            layout[f'pillar{i}'] = np.array([0, 0])
+        """
         for name, (placements, keepout) in self.placements.items():
             # Room will be sampled after
             if 'room' in name:
                 layout[name] = self.room_info[name]["pos"][:2]
                 continue
-            """
-            elif 'goal' in name:
-                layout[name] = np.array([1.5, 0])
-                continue
-            """
+
+            #elif 'goal' in name:
+            #    continue
+            #elif 'robot' in name:
+            #    continue
+            #elif 'goal' in name:
+            #    layout[name] = np.array([1.5, 0])
+            #    continue
             conflicted = True
             for _ in range(100):
                 xy = self.draw_placement(placements, keepout)
@@ -623,6 +632,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
             if conflicted:
                 return False
             layout[name] = xy
+        
+        
         self.layout = layout
         return True
 
