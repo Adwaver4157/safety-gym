@@ -102,7 +102,10 @@ class World:
     def build(self):
         ''' Build a world, including generating XML and moving objects '''
         # Read in the base XML (contains robot, camera, floor, etc)
-        self.robot_base_path = os.path.join(BASE_DIR, self.robot_base)
+        if "dataset/xmls" in self.robot_base:
+            self.robot_base_path = self.robot_base
+        else:
+            self.robot_base_path = os.path.join(BASE_DIR, self.robot_base)
         with open(self.robot_base_path) as f:
             self.robot_base_xml = f.read()
         self.xml = xmltodict.parse(self.robot_base_xml)  # Nested OrderedDict objects
@@ -368,7 +371,10 @@ class World:
 class Robot:
     ''' Simple utility class for getting mujoco-specific info about a robot '''
     def __init__(self, path):
-        base_path = os.path.join(BASE_DIR, path)
+        if "dataset/xmls" in path:
+            base_path = path
+        else:
+            base_path = os.path.join(BASE_DIR, path)
         self.sim = MjSim(load_model_from_path(base_path))
         self.sim.forward()
 
