@@ -8,7 +8,7 @@ from collections import OrderedDict
 from mujoco_py import const, load_model_from_path, load_model_from_xml, MjSim, MjViewer, MjRenderContextOffscreen
 
 import safety_gym
-import sys
+# import sys
 
 '''
 Tools that allow the Safety Gym Engine to interface to MuJoCo.
@@ -107,6 +107,7 @@ class World:
         else:
             self.robot_base_path = os.path.join(BASE_DIR, self.robot_base)
         with open(self.robot_base_path) as f:
+            # with open("/mnt/c/Users/adwaver/workspace/AKlab/material/dual_ur5_husky_mujoco/dual_ur5_husky/mobile_pick_and_place.xml") as f:
             self.robot_base_xml = f.read()
         self.xml = xmltodict.parse(self.robot_base_xml)  # Nested OrderedDict objects
 
@@ -152,7 +153,6 @@ class World:
                 ''')
             self.xml['mujoco']['asset'] = asset['asset']
 
-
         # Add light to the XML dictionary
         light = xmltodict.parse('''<b>
             <light cutoff="100" diffuse="1 1 1" dir="0 0 -1" directional="true"
@@ -182,36 +182,35 @@ class World:
         # Build and add a tracking camera (logic needed to ensure orientation correct)
         theta = self.robot_rot
         xyaxes = dict(
-                    x1=np.cos(theta), 
-                    x2=-np.sin(theta),
-                    x3=0,
-                    y1=np.sin(theta),
-                    y2=np.cos(theta),
-                    y3=1
-                    )
+            x1=np.cos(theta),
+            x2=-np.sin(theta),
+            x3=0,
+            y1=np.sin(theta),
+            y2=np.cos(theta),
+            y3=1
+        )
         pos = dict(
-                xp=0*np.cos(theta) + (-2)*np.sin(theta),
-                yp=0*(-np.sin(theta)) + (-2)*np.cos(theta),
-                zp=2
-                )
+            xp=0 * np.cos(theta) + (-2) * np.sin(theta),
+            yp=0 * (-np.sin(theta)) + (-2) * np.cos(theta),
+            zp=2
+        )
         track_camera = xmltodict.parse('''<b>
             <camera name="track" mode="track" pos="{xp} {yp} {zp}" xyaxes="{x1} {x2} {x3} {y1} {y2} {y3}"/>
             </b>'''.format(**pos, **xyaxes))
         worldbody['body'][0]['camera'] = [
             worldbody['body'][0]['camera'],
             track_camera['b']['camera']
-            ]
-
+        ]
 
         # Add objects to the XML dictionary
         for name, object in self.objects.items():
             assert object['name'] == name, f'Inconsistent {name} {object}'
             object = object.copy()  # don't modify original object
             object['quat'] = rot2quat(object['rot'])
-            if name=='box':
+            if name == 'box':
                 dim = object['size'][0]
                 object['dim'] = dim
-                object['width'] = dim/2
+                object['width'] = dim / 2
                 object['x'] = dim
                 object['y'] = dim
                 body = xmltodict.parse('''
@@ -301,8 +300,8 @@ class World:
         ''' Build a new sim from a model if the model changed '''
         if state:
             old_state = self.sim.get_state()
-        #self.config.update(deepcopy(config))
-        #self.parse(self.config)
+        # self.config.update(deepcopy(config))
+        # self.parse(self.config)
         self.parse(config)
         self.build()
         if state:
@@ -367,15 +366,16 @@ class World:
         return self.data.get_body_xvelp(name).copy()
 
 
-
 class Robot:
     ''' Simple utility class for getting mujoco-specific info about a robot '''
+
     def __init__(self, path):
         if "dataset/xmls" in path:
             base_path = path
         else:
             base_path = os.path.join(BASE_DIR, path)
         self.sim = MjSim(load_model_from_path(base_path))
+        # self.sim = MjSim(load_model_from_path("/mnt/c/Users/adwaver/workspace/AKlab/material/dual_ur5_husky_mujoco/dual_ur5_husky/mobile_pick_and_place.xml"))
         self.sim.forward()
 
         # Needed to figure out z-height of free joint of offset body
