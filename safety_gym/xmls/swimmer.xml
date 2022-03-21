@@ -46,5 +46,8 @@
     <actuator>
         <motor ctrllimited="true" ctrlrange="-1 1" gear="150.0" joint="rot2" />
         <motor ctrllimited="true" ctrlrange="-1 1" gear="150.0" joint="rot3" />
+        <!-- <motor ctrllimited="true" ctrlrange="-1 1" gear="150.0" joint="rot" />
+        <motor ctrllimited="true" ctrlrange="-1 1" gear="150.0" joint="slider1" />
+        <motor ctrllimited="true" ctrlrange="-1 1" gear="150.0" joint="slider2" /> -->
     </actuator>
 </mujoco>

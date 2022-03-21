@@ -618,11 +618,11 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 layout[name] = self.room_info[name]["pos"][:2]
                 continue
 
-            #elif 'goal' in name:
+            # elif 'goal' in name:
             #    continue
-            #elif 'robot' in name:
+            # elif 'robot' in name:
             #    continue
-            #elif 'goal' in name:
+            # elif 'goal' in name:
             #    layout[name] = np.array([1.5, 0])
             #    continue
             conflicted = True
@@ -635,8 +635,8 @@ class Engine(gym.Env, gym.utils.EzPickle):
                 return False
             layout[name] = xy
         
-        
         self.layout = layout
+        
         return True
 
     def constrain_placement(self, placement, keepout):
